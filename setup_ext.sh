@@ -6,10 +6,9 @@
 # Full OS upgrade
 # Sublime Text 3
 # speedtest-cli
-# youtube-dl
 # gnome-chess
+# youtube-dl
 # Environment config
-#
 
 
 
@@ -36,15 +35,12 @@ status()
 }
 
 
+# check OS
+OS=$(cat /etc/issue | awk '{print $1, $2}' | sed -e 's/^[ \t]*//')
+
 # check chassis
-chassis()
-{
-    CHASSIS=$(hostnamectl status | grep Chassis | cut -f2 -d ":" | tr -d ' ')
-    echo "Chassis: ${CHASSIS}"
-    if ! [ "$CHASSIS" = "laptop" ]; then
-        xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/show-tray-icon -s 0
-    fi;
-}
+CHASSIS=$(hostnamectl status | grep Chassis | cut -f2 -d ":" | tr -d ' ')
+
 
 
 # elevation
@@ -56,8 +52,8 @@ UFWSETUP=false
 FULLUPGRADE=false
 SUBLIMETEXT=false
 SPEEDTESTCLI=false
-YOUTUBEDL=false
 GNOMECHESS=false
+YOUTUBEDL=false
 ENVIRONMENTCONFIG=false
 
 
@@ -125,16 +121,6 @@ status "install" $SPEEDTESTCLI "speedtest-cli"
 
 
 
-# install youtube-dl
-echo "\nInstalling youtube-dl...\n"
-sudo snap install youtube-dl &&
-YOUTUBEDL=true || YOUTUBEDL=false
-
-# youtube-dl status
-status "install" $YOUTUBEDL "youtube-dl"
-
-
-
 # install gnome-chess
 echo "\nInstalling gnome-chess...\n"
 sudo apt install gnome-chess -y &&
@@ -145,26 +131,35 @@ status "install" $GNOMECHESS "gnome-chess"
 
 
 
-# environment setup
-echo "\nEnvironment config..."
+# install youtube-dl
+echo "\nInstalling youtube-dl...\n"
+sudo pip3 install youtube-dl &&
+sudo apt install ffmpeg &&
+YOUTUBEDL=true || YOUTUBEDL=false
 
-OS=$(cat /etc/issue | awk '{print $1, $2}' | sed -e 's/^[ \t]*//')
-echo "\nOS detected: ${OS}"
+# youtube-dl status
+status "install" $YOUTUBEDL "youtube-dl"
+
+
+
+# environment setup
+echo "\nEnvironment config for OS: ${OS}..."
 
 case "$OS" in
 	"Peppermint Ten")
-		## panel config
 		echo "Xfce4 panel configuration..."
 
-		## videos remove
+		## remove videos
 		xfconf-query -c xfce4-panel -p /plugins/plugin-5 -rR &&
 
 		## remove pager
 		xfconf-query -c xfwm4 -p /general/workspace_count -s 1 &&
 		xfconf-query -c xfce4-panel -p /plugins/plugin-8 -rR &&
 
-		## remove xfce4 power manager icon, if not laptop
-		chassis &&
+		## remove power manager icon, if not laptop
+		if ! [ "$CHASSIS" = "laptop" ]; then
+			xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/show-tray-icon -s 0
+		fi;
 
 		## keyboard layout config
 		xfconf-query -n -c xfce4-panel -p "/plugins/plugin-11/display-type" -t uint -s "2" &&
@@ -172,20 +167,34 @@ case "$OS" in
 		xfconf-query -n -c xfce4-panel -p "/plugins/plugin-11/display-tooltip-icon" -t bool -s "false" &&
 		xfconf-query -n -c xfce4-panel -p "/plugins/plugin-11/group-policy" -t uint -s "0" &&
 
-		## clock config
-		xfconf-query -n -c xfce4-panel -p "/plugins/plugin-12/digital-format" -t string -s "%d/%m/%y  %H:%M" &&
+		## clock config & timezone
+		xfconf-query -n -c xfce4-panel -p "/plugins/plugin-12/digital-format" -t string -s "%H:%M %a %d/%m/%Y" &&
 		sudo timedatectl set-timezone Europe/Copenhagen &&
 
 		## restart xfce4 panel
 		echo "Restarting XFCE4 panel..." &&
-		xfce4-panel -r &&
-		ENVIRONMENTCONFIG=true || ENVIRONMENTCONFIG=false
+		xfce4-panel -r
 		;;
 
 	"Linux Mint")
-		## panel config
-		echo "No environment config avaiable for Linux Mint\n" &&
-		ENVIRONMENTCONFIG=true || ENVIRONMENTCONFIG=false
+		echo "Cinnamon panel configuration..."
+		
+		## set timezone
+		sudo timedatectl set-timezone Europe/Copenhagen &&
+		
+		## config panels
+		dconf write /org/cinnamon/panels-enabled "['1:0:bottom', '2:1:bottom', '3:2:bottom']" &&
+		dconf write /org/cinnamon/panels-height "['1:24', '2:24', '3:24']" &&
+		dconf write /org/cinnamon/panel-zone-icon-sizes '[{"left":0,"center":0,"right":0,"panelId":1}, {"left":0,"center":0,"right":0,"panelId":2}, {"left":0,"center":0,"right":0,"panelId":3}]' &&
+		
+		## set panel icons
+		if ! [ "$CHASSIS" = "laptop" ]; then
+			dconf write /org/cinnamon/enabled-applets "['panel1:left:0:menu@cinnamon.org','panel1:left:1:panel-launchers@cinnamon.org','panel1:left:2:window-list@cinnamon.org','panel1:right:0:systray@cinnamon.org','panel1:right:1:xapp-status@cinnamon.org','panel1:right:2:keyboard@cinnamon.org','panel1:right:3:notifications@cinnamon.org','panel1:right:4:printers@cinnamon.org','panel1:right:5:removable-drives@cinnamon.org','panel1:right:6:network@cinnamon.org','panel1:right:7:sound@cinnamon.org','panel1:right:8:calendar@cinnamon.org','panel2:left:0:menu@cinnamon.org','panel2:left:1:panel-launchers@cinnamon.org','panel2:left:2:window-list@cinnamon.org','panel2:right:0:systray@cinnamon.org','panel2:right:1:xapp-status@cinnamon.org','panel2:right:2:keyboard@cinnamon.org','panel2:right:3:notifications@cinnamon.org','panel2:right:4:printers@cinnamon.org','panel2:right:5:removable-drives@cinnamon.org','panel2:right:6:network@cinnamon.org','panel2:right:7:sound@cinnamon.org','panel2:right:8:calendar@cinnamon.org', 'panel3:left:0:menu@cinnamon.org','panel3:left:1:panel-launchers@cinnamon.org','panel3:left:2:window-list@cinnamon.org','panel3:right:0:systray@cinnamon.org','panel3:right:1:xapp-status@cinnamon.org','panel3:right:2:keyboard@cinnamon.org','panel3:right:3:notifications@cinnamon.org','panel3:right:4:printers@cinnamon.org','panel3:right:5:removable-drives@cinnamon.org','panel3:right:6:network@cinnamon.org','panel3:right:7:sound@cinnamon.org','panel3:right:8:calendar@cinnamon.org']"
+		else
+			dconf write /org/cinnamon/enabled-applets "['panel1:left:0:menu@cinnamon.org','panel1:left:1:panel-launchers@cinnamon.org','panel1:left:2:window-list@cinnamon.org','panel1:right:0:systray@cinnamon.org','panel1:right:1:xapp-status@cinnamon.org','panel1:right:2:keyboard@cinnamon.org','panel1:right:3:notifications@cinnamon.org','panel1:right:4:printers@cinnamon.org','panel1:right:5:removable-drives@cinnamon.org','panel1:right:6:network@cinnamon.org','panel1:right:7:sound@cinnamon.org','panel1:right:8:power@cinnamon.org','panel1:right:9:calendar@cinnamon.org','panel2:left:0:menu@cinnamon.org','panel2:left:1:panel-launchers@cinnamon.org','panel2:left:2:window-list@cinnamon.org','panel2:right:0:systray@cinnamon.org','panel2:right:1:xapp-status@cinnamon.org','panel2:right:2:keyboard@cinnamon.org','panel2:right:3:notifications@cinnamon.org','panel2:right:4:printers@cinnamon.org','panel2:right:5:removable-drives@cinnamon.org','panel2:right:6:network@cinnamon.org','panel2:right:7:sound@cinnamon.org','panel2:right:8:power@cinnamon.org','panel2:right:9:calendar@cinnamon.org', 'panel3:left:0:menu@cinnamon.org','panel3:left:1:panel-launchers@cinnamon.org','panel3:left:2:window-list@cinnamon.org','panel3:right:0:systray@cinnamon.org','panel3:right:1:xapp-status@cinnamon.org','panel3:right:2:keyboard@cinnamon.org','panel3:right:3:notifications@cinnamon.org','panel3:right:4:printers@cinnamon.org','panel3:right:5:removable-drives@cinnamon.org','panel3:right:6:network@cinnamon.org','panel3:right:7:sound@cinnamon.org','panel3:right:8:power@cinnamon.org','panel3:right:9:calendar@cinnamon.org']"
+		fi;
+
+		cinnamon --replace > /dev/null 2>&1 & disown
 		;;
 esac
 
@@ -200,8 +209,8 @@ status "check" $UFWSETUP "Firewall setup"
 status "check" $FULLUPGRADE "Full-upgrade"
 status "check" $SUBLIMETEXT "Sublime Text 3"
 status "check" $SPEEDTESTCLI "speedtest-cli"
-status "check" $YOUTUBEDL "youtube-dl"
 status "check" $GNOMECHESS "gnome-chess"
+status "check" $YOUTUBEDL "youtube-dl"
 status "check" $ENVIRONMENTCONFIG "Environment setup"
 
 
